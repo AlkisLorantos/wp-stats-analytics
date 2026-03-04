@@ -69,3 +69,61 @@ def get_players() -> pd.DataFrame:
     FROM "Player"
     """
     return query(sql)
+
+def get_player_summary() -> pd.DataFrame:
+    sql = """
+    SELECT 
+        p.name as player_name,
+        COUNT(*) FILTER (WHERE se.type = 'GOAL') as goals,
+        COUNT(*) FILTER (WHERE se.type = 'ASSIST') as assists,
+        COUNT(*) FILTER (WHERE se.type = 'STEAL') as steals,
+        COUNT(*) FILTER (WHERE se.type = 'BLOCK') as blocks,
+        COUNT(*) FILTER (WHERE se.type = 'EXCLUSION') as exclusions,
+        COUNT(*) FILTER (WHERE se.type = 'TURNOVER') as turnovers,
+        COUNT(*) FILTER (WHERE se.type = 'SAVE') as saves
+    FROM "Player" p
+    LEFT JOIN "StatEvent" se ON se."playerId" = p.id
+    GROUP BY p.id, p.name
+    ORDER BY goals DESC
+    """
+    return query(sql)
+
+def get_game_summary(game_id: int) -> pd.DataFrame:
+    sql = f"""
+    SELECT 
+        p.name as player_name,
+        gr."capNumber" as cap,
+        COUNT(*) FILTER (WHERE se.type = 'GOAL') as goals,
+        COUNT(*) FILTER (WHERE se.type = 'ASSIST') as assists,
+        COUNT(*) FILTER (WHERE se.type = 'STEAL') as steals,
+        COUNT(*) FILTER (WHERE se.type = 'EXCLUSION') as exclusions
+    FROM "GameRoster" gr
+    JOIN "Player" p ON gr."playerId" = p.id
+    LEFT JOIN "StatEvent" se ON se."playerId" = p.id AND se."gameId" = {game_id}
+    WHERE gr."gameId" = :game_id
+    GROUP BY p.id, p.name, gr."capNumber"
+    ORDER BY gr."capNumber"
+    """
+
+    return pd.read_sql(sql, engine, params={"game_id": game_id})
+
+def get_shots() -> pd.DataFrame:
+    sql = """
+    SELECT 
+        se.x,
+        se.y,
+        se."goalX",
+        se."goalY",
+        se."shotOutcome",
+        se.context,
+        se.period,
+        se.clock,
+        p.name as player_name,
+        g.id as game_id
+    FROM "StatEvent" se
+    JOIN "Player" p ON se."playerId" = p.id
+    JOIN "Game" g ON se."gameId" = g.id
+    WHERE se.type IN ('GOAL', 'SHOT')
+    ORDER BY se.timestamp
+    """
+    return query(sql)

@@ -1,16 +1,9 @@
-import os
 import pandas as pd
-from sqlalchemy import create_engine
-from dotenv import load_dotenv
-
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
-
+from db.engine import engine
 
 def query(sql: str) -> pd.DataFrame:
     return pd.read_sql(sql, engine)
+
 
 
 def get_all_stats() -> pd.DataFrame:
